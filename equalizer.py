@@ -1,5 +1,6 @@
-from copy import copy
 import json
+import sys
+from copy import copy
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -13,8 +14,11 @@ def floor_to_half_hour(ts: datetime) -> datetime:
         return datetime(ts.year, ts.month, ts.day, ts.hour, minute=30)
 
 
-input_file = "input_c.json"
-output_file = Path(input_file).stem + "_out.json"
+input_file = sys.argv[1]
+if len(sys.argv) > 2:
+    output_file = sys.argv[2]
+else:
+    output_file = Path(input_file).stem + "_out.json"
 
 with open(input_file, "r") as f:
     input = json.load(f)
@@ -35,6 +39,7 @@ class TimeValue():
     def serialize(self) -> Dict:
         time_ms = int(self.timestamp.timestamp() * 1000)
         return {"timestamp": time_ms, "value": self.value}
+
 
 time_values = [TimeValue(**t) for t in input["timeseries"]]
 out_values = []
