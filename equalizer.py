@@ -38,22 +38,27 @@ out_values = []
 
 interval_start = floor_to_half_hour(time_values[0].timestamp)
 sum_values = 0
+sum_seconds = 0
 half_hour = timedelta(minutes=30)
 
 for t_start, t_end in zip(time_values, time_values[1:]):
     # Add to current interval
     elapsed = (t_end.timestamp - t_start.timestamp).total_seconds()
     sum_values += elapsed * t_start.value
+    sum_seconds += elapsed
 
     if interval_start + half_hour <= t_end.timestamp:
-        # Calculate value for this interval
-        mean_values = sum_values / half_hour.total_seconds()
-        interval = TimeValue(interval_start, mean_values)
-        out_values.append(interval)
+        if sum_seconds < half_hour.total_seconds():
+            print(f"Incomplete interval, skipping {t_start}")
+        else:
+            # Calculate value for this interval
+            mean_values = sum_values / half_hour.total_seconds()
+            out_values.append(TimeValue(interval_start, mean_values))
 
         # We need to start a new interval
         interval_start = floor_to_half_hour(t_end.timestamp)
         sum_values = 0
+        sum_seconds = 0
 
 print(time_values)
 print("after:")
