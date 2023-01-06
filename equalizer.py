@@ -33,21 +33,13 @@ class TimeValue():
 
 class Equalizer:
 
-    def __init__(self, input_file, output_file) -> None:
-        self.input_file = input_file
-        self.output_file = output_file
-        self._input_data = None
+    def __init__(self, input_data) -> None:
+        self._input_data = input_data
         self._data_points = None
 
-        self._load_data()
+        self._validate()
 
-    def _load_data(self):
-        try:
-            with open(input_file, "r") as f:
-                self._input_data = json.load(f)
-        except Exception as ex:
-            raise ValueError(f"Could not load {input_file} as json!") from ex
-
+    def _validate(self):
         try:
             timeseries = self._input_data["timeseries"]
         except KeyError as ex:
@@ -65,12 +57,11 @@ class Equalizer:
                              f"timeseries. Got: {len(self._data_points)}")
 
     def run(self):
-        out_values = []
-
         interval_start = floor_to_half_hour(self._data_points[0].timestamp)
         sum_values = 0
         sum_seconds = 0
         half_hour = timedelta(minutes=30)
+        out_values = []
 
         for t_start, t_end in zip(self._data_points, self._data_points[1:]):
             # Add to current interval
@@ -91,19 +82,14 @@ class Equalizer:
                 sum_values = 0
                 sum_seconds = 0
 
-        self._save_output(out_values)
+        output = self._build_output(out_values)
+        return output
 
-    def _save_output(self, out_values):
+    def _build_output(self, out_values):
         out_values = [tv.serialize() for tv in out_values]
-
         output = copy(self._input_data)
         output["timeseries"] = out_values
-        try:
-            with open(output_file, "w") as f:
-                json.dump(output, f)
-        except Exception as ex:
-            raise RuntimeError(
-                f"Could not save output to {output_file}!") from ex
+        return output
 
 
 if __name__ == "__main__":
@@ -112,6 +98,19 @@ if __name__ == "__main__":
         output_file = sys.argv[2]
     else:
         output_file = Path(input_file).stem + "_out.json"
-    
-    eq = Equalizer(input_file, output_file)
-    eq.run()
+
+    try:
+        with open(input_file, "r") as f:
+            input_data = json.load(f)
+    except Exception as ex:
+        raise ValueError(f"Could not load {input_file} as json!") from ex
+
+
+    eq = Equalizer(input_data)
+    output_data = eq.run()
+
+    try:
+        with open(output_file, "w") as f:
+            json.dump(output_data, f)
+    except Exception as ex:
+        raise RuntimeError(f"Could not save output to {output_file}!") from ex
