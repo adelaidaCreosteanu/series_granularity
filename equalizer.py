@@ -56,6 +56,10 @@ class Equalizer:
             raise ValueError(f"At least two values are required in the "
                              f"timeseries. Got: {len(self._data_points)}")
 
+        timestamp_set = set([tv.timestamp for tv in self._data_points])
+        if len(timestamp_set) < len(self._data_points):
+            raise ValueError(f"Duplicate timestamps are not accepted!")
+
     def run(self):
         interval_start = floor_to_half_hour(self._data_points[0].timestamp)
         sum_values = 0
