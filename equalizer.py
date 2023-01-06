@@ -1,9 +1,9 @@
-import dataclasses
+from copy import copy
 import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Union
+from typing import Dict, Union
 
 
 def floor_to_half_hour(ts: datetime) -> datetime:
@@ -32,6 +32,9 @@ class TimeValue():
             # Cast from epoch time to timestamp
             self.timestamp = datetime.fromtimestamp(ts)
 
+    def serialize(self) -> Dict:
+        time_ms = int(self.timestamp.timestamp() * 1000)
+        return {"timestamp": time_ms, "value": self.value}
 
 time_values = [TimeValue(**t) for t in input["timeseries"]]
 out_values = []
@@ -63,4 +66,9 @@ for t_start, t_end in zip(time_values, time_values[1:]):
 print(time_values)
 print("after:")
 print(out_values)
-out_values = [dataclasses.asdict(tv) for tv in out_values]
+out_values = [tv.serialize() for tv in out_values]
+
+output = copy(input)
+output["timeseries"] = out_values
+with open(output_file, "w") as f:
+    json.dump(output, f)
