@@ -14,6 +14,14 @@ def floor_to_half_hour(ts: datetime) -> datetime:
         return datetime(ts.year, ts.month, ts.day, ts.hour, minute=30)
 
 
+def force_ceil_to_half_hour(ts: datetime) -> datetime:
+    if ts.minute < 30:
+        return datetime(ts.year, ts.month, ts.day, ts.hour, minute=30)
+    else:
+        previous_hour = datetime(ts.year, ts.month, ts.day, ts.hour, minute=0)
+        return previous_hour + timedelta(hours=1)
+
+
 @dataclass
 class TimeValue():
     timestamp: Union[datetime, int]
@@ -38,6 +46,7 @@ class Equalizer:
         self._data_points = None
 
         self._validate()
+        self._break_up_long_data_points()
 
     def _validate(self):
         try:
@@ -60,6 +69,24 @@ class Equalizer:
         if len(timestamp_set) < len(self._data_points):
             raise ValueError(f"Duplicate timestamps are not accepted!")
 
+    def _break_up_long_data_points(self):
+        data_points_dict = {tv.timestamp: tv.value for tv in self._data_points}
+
+        # We assume original data is sorted.
+        for t_start, t_end in zip(self._data_points, self._data_points[1:]):
+            next_half_hour = force_ceil_to_half_hour(t_start.timestamp)
+            while next_half_hour < t_end.timestamp:
+                # Add to dictionary
+                data_points_dict[next_half_hour] = t_start.value
+                next_half_hour = force_ceil_to_half_hour(next_half_hour)
+
+        # Sort dictionary based on timestamp
+        data_points = sorted(list(data_points_dict.items()),
+                             key=lambda t: t[0])
+
+        # Convert to `TimeValue`s
+        self._data_points = [TimeValue(*v) for v in data_points]
+
     def run(self):
         interval_start = floor_to_half_hour(self._data_points[0].timestamp)
         sum_values = 0
@@ -76,6 +103,10 @@ class Equalizer:
             if interval_start + half_hour <= t_end.timestamp:
                 if sum_seconds < half_hour.total_seconds():
                     print(f"Incomplete interval, skipping {t_start}")
+                elif sum_seconds > half_hour.total_seconds():
+                    raise RuntimeError(
+                        f"Interval is longer than half an hour! "
+                        f"Check {t_start}")
                 else:
                     # Calculate value for this interval
                     mean_values = sum_values / half_hour.total_seconds()
@@ -109,7 +140,6 @@ if __name__ == "__main__":
     except Exception as ex:
         raise ValueError(f"Could not load {input_file} as json!") from ex
 
-
     eq = Equalizer(input_data)
     output_data = eq.run()
 
@@ -118,3 +148,4 @@ if __name__ == "__main__":
             json.dump(output_data, f)
     except Exception as ex:
         raise RuntimeError(f"Could not save output to {output_file}!") from ex
+    print(f"Saved output to {output_file}")
