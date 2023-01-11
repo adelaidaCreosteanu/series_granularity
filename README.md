@@ -42,7 +42,7 @@ Then, the computation would be correct.
 
 See my solution in the `Equalizer::_break_up_long_data_points` function.
 
-# Extensions proposed
+# Extension proposal
 * Use the python library `click` to create a nicer command line interface
 complete with extensive argument validation and user-friendly errors.
 * Use the testing library `pytest` to create automated tests with corner cases.
